@@ -1,5 +1,135 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import './App.css';
+
+// 키패드 레이아웃
+const PIN_KEYS = [
+  ["1","2","3"],
+  ["4","5","6"],
+  ["7","8","9"],
+  ["","0","del"],
+];
+const CORRECT_PIN = "1357";
+
+function PinLock({ onUnlock }) {
+  const meta = window.COMPLEX_META || {};
+  const [digits, setDigits] = useState([]);
+  const [shake, setShake] = useState(false);
+
+  const handleKey = useCallback((key) => {
+    if (key === "del") {
+      setDigits(d => d.slice(0, -1));
+      return;
+    }
+    if (digits.length >= 4) return;
+    const next = [...digits, key];
+    setDigits(next);
+
+    if (next.length === 4) {
+      const entered = next.join("");
+      if (entered === CORRECT_PIN) {
+        // 짧은 지연 후 언락 — 마지막 점 채워지는 애니메이션 보일 시간
+        setTimeout(() => {
+          sessionStorage.setItem("auth", "1");
+          onUnlock();
+        }, 300);
+      } else {
+        // 틀릸 경우: 흔들림 후 재입력
+        setShake(true);
+        setTimeout(() => {
+          setShake(false);
+          setDigits([]);
+        }, 600);
+      }
+    }
+  }, [digits, onUnlock]);
+
+  return (
+    <div style={{
+      position: "fixed", inset: 0, zIndex: 999,
+      background: "#faf9f6",
+      display: "flex", flexDirection: "column",
+      alignItems: "center", justifyContent: "center",
+      gap: 0,
+      padding: "env(safe-area-inset-top) 0 env(safe-area-inset-bottom) 0",
+    }}>
+      {/* 상단: 로고 + 타이틀 */}
+      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 14, marginBottom: 44 }}>
+        <div style={{
+          width: 56, height: 56, borderRadius: 16,
+          background: "linear-gradient(135deg, oklch(0.32 0.06 35) 0%, oklch(0.22 0.04 30) 100%)",
+          color: "#fff", fontSize: 22, fontWeight: 800,
+          display: "flex", alignItems: "center", justifyContent: "center",
+          letterSpacing: -0.5,
+          boxShadow: "0 4px 16px rgba(0,0,0,0.12)",
+        }}>파</div>
+        <div style={{ textAlign: "center" }}>
+          <div style={{ fontSize: 17, fontWeight: 800, color: "#1a1a1a", letterSpacing: -0.4 }}>
+            {meta.name || "검단 파라곤"}
+          </div>
+          <div style={{ fontSize: 12.5, color: "#8a857d", marginTop: 3 }}>
+            계약자 라운지
+          </div>
+        </div>
+      </div>
+
+      {/* PIN 도트 */}
+      <div className={shake ? "pin-dots pin-shake" : "pin-dots"} style={{
+        display: "flex", gap: 18, marginBottom: 40,
+      }}>
+        {[0,1,2,3].map(i => (
+          <div key={i} style={{
+            width: 12, height: 12, borderRadius: 999,
+            background: i < digits.length
+              ? "oklch(0.32 0.06 35)"
+              : "rgba(0,0,0,0.12)",
+            transition: "background 0.15s ease, transform 0.15s ease",
+            transform: i < digits.length ? "scale(1.15)" : "scale(1)",
+          }} />
+        ))}
+      </div>
+
+      {/* 숫자 패드 */}
+      <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+        {PIN_KEYS.map((row, ri) => (
+          <div key={ri} style={{ display: "flex", gap: 20, justifyContent: "center" }}>
+            {row.map((key, ki) => {
+              if (key === "") return <div key={ki} style={{ width: 72, height: 72 }} />;
+              return (
+                <button
+                  key={ki}
+                  onClick={() => handleKey(key)}
+                  className="pin-btn"
+                  style={{
+                    width: 72, height: 72, borderRadius: 999,
+                    border: "none", cursor: "pointer",
+                    background: key === "del" ? "transparent" : "#fff",
+                    boxShadow: key === "del" ? "none" : "0 1px 0 rgba(0,0,0,0.04), 0 2px 8px rgba(0,0,0,0.06), 0 0 0 0.5px rgba(0,0,0,0.05)",
+                    display: "flex", flexDirection: "column",
+                    alignItems: "center", justifyContent: "center",
+                    gap: 1,
+                    transition: "transform 0.1s ease, box-shadow 0.1s ease",
+                  }}
+                >
+                  {key === "del" ? (
+                    <svg width="22" height="16" viewBox="0 0 24 18" fill="none">
+                      <path d="M9 3H20a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H9l-7-6 7-6z" stroke="#8a857d" strokeWidth="1.8" strokeLinejoin="round"/>
+                      <path d="M14 7l-4 4M10 7l4 4" stroke="#8a857d" strokeWidth="1.8" strokeLinecap="round"/>
+                    </svg>
+                  ) : (
+                    <span style={{ fontSize: 26, fontWeight: 600, color: "#1a1a1a", lineHeight: 1 }}>{key}</span>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+        ))}
+      </div>
+
+      {/* 하단 안내 */}
+      <div style={{ marginTop: 36, fontSize: 12, color: "#a8a39a" }}>4자리 비번을 입력하세요</div>
+    </div>
+  );
+}
 
 // 검단 파라곤 계약자 라운지 — 데일리 브리핑
 const Icon = {
@@ -317,6 +447,17 @@ function TopicDetail({ topic, day, onClose }) {
 }
 
 function App() {
+  // 세션 단위 인증 체크
+  const [authed, setAuthed] = useState(() => sessionStorage.getItem("auth") === "1");
+
+  if (!authed) {
+    return <PinLock onUnlock={() => setAuthed(true)} />;
+  }
+
+  return <AuthedApp />;
+}
+
+function AuthedApp() {
   const days = window.BRIEFING_DATA || [];
   const [idx, setIdx] = useState(0);
   const [openTopic, setOpenTopic] = useState(null);
