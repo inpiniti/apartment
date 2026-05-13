@@ -1009,7 +1009,7 @@ window.CATEGORY_STYLES = {
 window.COMPLEX_META = {
   name: '검단 파라곤',
   subtitle: '1차 계약자 라운지',
-  members: 1284,
+  members: 569,
   online: 312,
   moveIn: '2028.07',
 };

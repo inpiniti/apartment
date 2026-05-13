@@ -2,6 +2,11 @@
   box-sizing: border-box;
 }
 
+/* 아이폰 Safari 하단 safe area 대응 */
+body {
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
 html, body {
   margin: 0;
   padding: 0;
@@ -43,6 +48,57 @@ html, body {
 
 .topic-grid {
   width: 100%;
+}
+
+/* DateRail — 날짜 많아져도 깨지지 않도록 가로 스크롤 처리 */
+.date-rail {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none; /* Firefox */
+  padding: 4px 0 2px;
+  margin-top: 10px;
+  /* 스크롤바 숨김 */
+}
+.date-rail::-webkit-scrollbar {
+  display: none;
+}
+
+/* 모바일에서 헤더 DateControl 숨김 (DateRail만 사용) */
+@media (max-width: 600px) {
+  .header-date-control {
+    display: none !important;
+  }
+  /* 모바일: desktop용 타이틀 숨김 */
+  .header-title-desktop {
+    display: none !important;
+  }
+  /* 모바일: mobile-rail-bar — 항상 sticky (JS로 position 변경 금지) */
+  .mobile-rail-bar {
+    display: block;
+    position: sticky;
+    top: 64px;   /* 헤더 높이에 맞춤 */
+    z-index: 15;
+  }
+}
+
+/* 데스크탑에서 mobile 전용 요소 숨김 */
+@media (min-width: 601px) {
+  .header-title-mobile {
+    display: none !important;
+  }
+  /* 데스크탑: DateRail sticky 바 숨김 */
+  .mobile-rail-bar {
+    display: none !important;
+  }
+}
+
+/* 모바일에서 데스크탑 전용 DateRail 숨김 */
+@media (max-width: 600px) {
+  .desktop-rail {
+    display: none !important;
+  }
 }
 
 button {

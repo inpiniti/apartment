@@ -100,13 +100,14 @@ function DateControl({ days, idx, setIdx }) {
 
 function DateRail({ days, idx, setIdx }) {
   return (
-    <div style={{ display: "flex", gap: 6, justifyContent: "center", marginTop: 10 }}>
+    <div className="date-rail">
       {days.map((d, i) => (
         <button key={d.date} onClick={() => setIdx(i)}
           style={{
             border: "none", cursor: "pointer", background: "transparent",
             display: "flex", flexDirection: "column", alignItems: "center", gap: 5,
             padding: "4px 6px",
+            flexShrink: 0,
           }}>
           <div style={{
             width: i === idx ? 24 : 6, height: 6, borderRadius: 999,
@@ -117,6 +118,7 @@ function DateRail({ days, idx, setIdx }) {
             fontSize: 10.5, fontWeight: i === idx ? 700 : 500,
             color: i === idx ? "#1a1a1a" : "#a8a39a",
             fontFeatureSettings: '"tnum"',
+            whiteSpace: "nowrap",
           }}>{d.date.slice(5).replace("-", "/")}</span>
         </button>
       ))}
@@ -318,17 +320,70 @@ function App() {
   const days = window.BRIEFING_DATA || [];
   const [idx, setIdx] = useState(0);
   const [openTopic, setOpenTopic] = useState(null);
+  // 모바일 스크롤 감지 — 헤더 콘텐츠 전환용 (opacity/transform만 바꿈, position 변경 없음)
+  const [scrolled, setScrolled] = useState(false);
+  // DateRail 표시/숨김 — 스크롤 방향 감지
+  const [railVisible, setRailVisible] = useState(true);
+  // DateRail 구분선 표시용
+  const [railPast, setRailPast] = useState(false);
+  const sentinelRef = React.useRef(null);
+  const lastScrollYRef = React.useRef(0);
+
   const day = days[idx];
   const meta = window.COMPLEX_META || {};
   const moodColor = moodOf(day?.mood || "진지");
 
+  useEffect(() => {
+    const isMobile = () => window.innerWidth <= 600;
+    const onScroll = () => {
+      if (!isMobile()) return;
+      const currentY = window.scrollY;
+      const delta = currentY - lastScrollYRef.current;
+
+      // 헤더 타이틀 전환 (opacity/transform만)
+      setScrolled(currentY > 60);
+
+      // DateRail 방향별 표시/숨김
+      // 상단 100px 이내에서는 항상 표시
+      if (currentY < 100) {
+        setRailVisible(true);
+      } else if (Math.abs(delta) > 4) {
+        // 위로 스크롤(delta < 0) → 표시, 아래로 스크롤 → 숨김
+        setRailVisible(delta < 0);
+      }
+
+      lastScrollYRef.current = currentY;
+    };
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
+
+  useEffect(() => {
+    // IntersectionObserver로 sentinel이 뷰포트 위로 사라지면 railPast=true
+    // → position 변경 없이 border/bg만 추가
+    const el = sentinelRef.current;
+    if (!el) return;
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (window.innerWidth > 600) return;
+        setRailPast(!entry.isIntersecting);
+      },
+      { rootMargin: "-64px 0px 0px 0px", threshold: 0 }
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
+
   if (!day) return <div>Loading...</div>;
+
+  const totalReplies = day.topics.reduce((s, t) => s + t.replies, 0);
 
   return (
     <div style={{ minHeight: "100vh", background: "#faf9f6" }}>
+      {/* ── 메인 헤더 ── */}
       <header style={{
-        position: "sticky", top: 0, zIndex: 10,
-        background: "rgba(250, 249, 246, 0.85)",
+        position: "sticky", top: 0, zIndex: 20,
+        background: "rgba(250, 249, 246, 0.92)",
         backdropFilter: "blur(20px) saturate(180%)",
         WebkitBackdropFilter: "blur(20px) saturate(180%)",
         borderBottom: "0.5px solid rgba(0,0,0,0.05)",
@@ -336,17 +391,41 @@ function App() {
         <div className="container" style={{
           maxWidth: 880, margin: "0 auto",
           padding: "16px 20px 14px",
-          display: "flex", alignItems: "center", gap: 16, flexWrap: "wrap",
+          display: "flex", alignItems: "center", gap: 16,
         }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 12, flex: "1 1 auto", minWidth: 0 }}>
+          {/* 아이콘 — 항상 표시 */}
+          <div style={{
+            width: 38, height: 38, borderRadius: 12, flexShrink: 0,
+            background: "linear-gradient(135deg, oklch(0.32 0.06 35) 0%, oklch(0.22 0.04 30) 100%)",
+            color: "#fff", fontSize: 15, fontWeight: 800,
+            display: "flex", alignItems: "center", justifyContent: "center",
+            letterSpacing: -0.5,
+          }}>파</div>
+
+          {/* 데스크탑: 항상 단지명 표시 */}
+          <div className="header-title-desktop" style={{ flex: "1 1 auto", minWidth: 0 }}>
+            <div style={{ fontSize: 15.5, fontWeight: 800, color: "#1a1a1a", letterSpacing: -0.4, lineHeight: 1.2, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+              {meta.name} <span style={{ color: "#a8a39a", fontWeight: 600 }}>· 계약자 라운지</span>
+            </div>
+            <div style={{ fontSize: 11.5, color: "#8a857d", marginTop: 2, display: "flex", alignItems: "center", gap: 6, whiteSpace: "nowrap" }}>
+              {Icon.users(11, "#a8a39a")} 계약자 {meta.members?.toLocaleString()}명 · 입주 {meta.moveIn}
+            </div>
+          </div>
+
+          {/* 모바일: 고정 높이 래퍼 안에서 두 콘텐츠를 absolute로 겹쳐 opacity만 전환
+               → position 변경 없으므로 레이아웃 리플로우/스크롤 점프 없음 */}
+          <div className="header-title-mobile" style={{
+            flex: "1 1 auto", minWidth: 0,
+            position: "relative", height: 40, overflow: "hidden",
+          }}>
+            {/* 단지명 (스크롤 위) */}
             <div style={{
-              width: 38, height: 38, borderRadius: 12,
-              background: "linear-gradient(135deg, oklch(0.32 0.06 35) 0%, oklch(0.22 0.04 30) 100%)",
-              color: "#fff", fontSize: 15, fontWeight: 800,
-              display: "flex", alignItems: "center", justifyContent: "center",
-              letterSpacing: -0.5, flexShrink: 0,
-            }}>파</div>
-            <div style={{ minWidth: 0 }}>
+              position: "absolute", inset: 0,
+              transition: "opacity 0.22s ease, transform 0.22s ease",
+              opacity: scrolled ? 0 : 1,
+              transform: scrolled ? "translateY(-6px)" : "translateY(0)",
+              pointerEvents: scrolled ? "none" : "auto",
+            }}>
               <div style={{ fontSize: 15.5, fontWeight: 800, color: "#1a1a1a", letterSpacing: -0.4, lineHeight: 1.2, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
                 {meta.name} <span style={{ color: "#a8a39a", fontWeight: 600 }}>· 계약자 라운지</span>
               </div>
@@ -354,14 +433,63 @@ function App() {
                 {Icon.users(11, "#a8a39a")} 계약자 {meta.members?.toLocaleString()}명 · 입주 {meta.moveIn}
               </div>
             </div>
+            {/* 날짜 요약 (스크롤 아래) */}
+            <div style={{
+              position: "absolute", inset: 0,
+              transition: "opacity 0.22s ease, transform 0.22s ease",
+              opacity: scrolled ? 1 : 0,
+              transform: scrolled ? "translateY(0)" : "translateY(8px)",
+              pointerEvents: scrolled ? "auto" : "none",
+            }}>
+              <div style={{
+                fontSize: 13, fontWeight: 700, color: "#1a1a1a",
+                letterSpacing: -0.3, lineHeight: 1.25,
+                whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
+              }}>
+                {day.headline}
+              </div>
+              <div style={{ fontSize: 11, color: "#8a857d", marginTop: 3, display: "flex", alignItems: "center", gap: 5, whiteSpace: "nowrap" }}>
+                <span>{day.date.replaceAll("-", ".")} {day.dow}요일</span>
+                <span style={{ color: "#d4d0c8" }}>·</span>
+                <span>토픽 {day.topics.length}개</span>
+                <span style={{ color: "#d4d0c8" }}>·</span>
+                <span>댓글 {totalReplies}</span>
+              </div>
+            </div>
           </div>
-          <DateControl days={days} idx={idx} setIdx={setIdx} />
+
+          {/* 날짜 컨트롤 — 데스크탑만 */}
+          <div className="header-date-control">
+            <DateControl days={days} idx={idx} setIdx={setIdx} />
+          </div>
         </div>
       </header>
 
-      <main className="container" style={{ maxWidth: 880, margin: "0 auto", padding: "24px 20px 60px" }}>
+      {/* ── 모바일 전용 DateRail sticky 바 ──
+           position은 CSS에서 항상 sticky로 고정.
+           JS는 border/bg 같은 시각 스타일만 바꿈 → 레이아웃 리플로우 없음 */}
+      <div
+        className="mobile-rail-bar"
+        style={{
+          /* 배경은 항상 불투명 — 스크롤 시 콘텐츠가 비쳐 보이지 않도록 */
+          background: "#faf9f6",
+          /* 구분선은 sticky 고정된 이후에만 표시 */
+          borderBottom: railPast ? "0.5px solid rgba(0,0,0,0.10)" : "0.5px solid transparent",
+          /* 스크롤 방향에 따라 슬라이드 인/아웃 */
+          transform: railVisible ? "translateY(0)" : "translateY(-100%)",
+          transition: "transform 0.28s cubic-bezier(0.32, 0.72, 0, 1), border-color 0.2s",
+          padding: "4px 20px 6px",
+        }}
+      >
+        {/* IntersectionObserver 감지 sentinel — 높이 0, 레이아웃 영향 없음 */}
+        <div ref={sentinelRef} style={{ height: 0 }} />
+        <DateRail days={days} idx={idx} setIdx={setIdx} />
+      </div>
+
+      <main className="container" style={{ maxWidth: 880, margin: "0 auto", padding: "0 20px calc(60px + env(safe-area-inset-bottom))" }}>
         <div key={day.date} style={{
           animation: "fadeSlide 0.3s cubic-bezier(0.32, 0.72, 0, 1)",
+          paddingTop: 24,
         }}>
           <div style={{ display: "flex", alignItems: "baseline", gap: 12, flexWrap: "wrap", marginBottom: 8 }}>
             <div style={{ fontSize: 12, fontWeight: 700, letterSpacing: 1.5, color: moodColor, whiteSpace: "nowrap" }}>
@@ -369,7 +497,7 @@ function App() {
             </div>
             <div style={{ flex: 1 }} />
             <div style={{ fontSize: 12, color: "#8a857d", whiteSpace: "nowrap" }}>
-              토픽 {day.topics.length}개 · 댓글 {day.topics.reduce((s,t)=>s+t.replies,0)}
+              토픽 {day.topics.length}개 · 댓글 {totalReplies}
             </div>
           </div>
           <h1 style={{
@@ -383,7 +511,10 @@ function App() {
             {day.date.replaceAll("-", ".")} {day.dow}요일
           </div>
 
-          <DateRail days={days} idx={idx} setIdx={setIdx} />
+          {/* 데스크탑 전용 DateRail */}
+          <div className="desktop-rail">
+            <DateRail days={days} idx={idx} setIdx={setIdx} />
+          </div>
 
           <div className="topic-grid" style={{
             display: "grid",
@@ -406,3 +537,5 @@ function App() {
 }
 
 export default App;
+
+
