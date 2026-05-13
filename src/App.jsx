@@ -194,11 +194,7 @@ function TopicDetail({ topic, day, onClose }) {
     return () => window.removeEventListener("keydown", onKey);
   }, [onClose]);
 
-  const comments = [
-    { name: "84A 계약자", initial: "이", time: "32분 전", text: "저도 같은 의견이에요. 입예협 통해 정식 안건으로 올려야 할 듯합니다." },
-    { name: "4동 6층", initial: "박", time: "1시간 전", text: "관련 자료 정리해서 공유드릴게요. 다음 주 정기 모임 때 논의해 보시죠." },
-    { name: "익명", initial: "익", time: "2시간 전", text: "참고로 인근 단지도 비슷한 상황에서 협의 성공한 사례가 있습니다." },
-  ];
+  const comments = topic.comments || [];
 
   return (
     <div onClick={onClose} style={{
