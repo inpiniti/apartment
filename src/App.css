@@ -128,3 +128,14 @@ button:active {
   box-shadow: 0 0 0 0.5px rgba(0,0,0,0.05) !important;
 }
 
+/* TopicDetail 모달 높이 조정 — svh (small viewport height) 사용 */
+.td-sheet {
+  max-height: 92svh;
+}
+
+@media (max-width: 600px) {
+  .td-sheet {
+    max-height: 85svh;
+  }
+}
+
