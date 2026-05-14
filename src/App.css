@@ -7,17 +7,23 @@ body {
   padding-bottom: env(safe-area-inset-bottom);
 }
 
-html, body {
+html,
+body {
   margin: 0;
   padding: 0;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Helvetica Neue", sans-serif;
+  font-family:
+    -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
 @keyframes fadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }
 
 @keyframes slideUp {
@@ -78,7 +84,7 @@ html, body {
   .mobile-rail-bar {
     display: block;
     position: sticky;
-    top: 64px;   /* 헤더 높이에 맞춤 */
+    top: 64px; /* 헤더 높이에 맞춤 */
     z-index: 15;
   }
 }
@@ -111,12 +117,25 @@ button:active {
 
 /* ── PinLock ── */
 @keyframes pinShake {
-  0%, 100% { transform: translateX(0); }
-  15%       { transform: translateX(-8px); }
-  35%       { transform: translateX(8px); }
-  55%       { transform: translateX(-6px); }
-  75%       { transform: translateX(6px); }
-  90%       { transform: translateX(-3px); }
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  15% {
+    transform: translateX(-8px);
+  }
+  35% {
+    transform: translateX(8px);
+  }
+  55% {
+    transform: translateX(-6px);
+  }
+  75% {
+    transform: translateX(6px);
+  }
+  90% {
+    transform: translateX(-3px);
+  }
 }
 
 .pin-shake {
@@ -125,7 +144,7 @@ button:active {
 
 .pin-btn:active {
   transform: scale(0.92) !important;
-  box-shadow: 0 0 0 0.5px rgba(0,0,0,0.05) !important;
+  box-shadow: 0 0 0 0.5px rgba(0, 0, 0, 0.05) !important;
 }
 
 /* TopicDetail 모달 높이 조정 — svh (small viewport height) 사용 */
@@ -133,9 +152,9 @@ button:active {
   max-height: 92svh;
 }
 
-@media (max-width: 600px) {
+/* @media (max-width: 600px) {
   .td-sheet {
     max-height: 85svh;
   }
 }
-
+ */
