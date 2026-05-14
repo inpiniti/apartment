@@ -333,7 +333,7 @@ function TopicDetail({ topic, day, onClose }) {
       position: "fixed", inset: 0, zIndex: 100,
       background: "rgba(20, 18, 14, 0.45)",
       backdropFilter: "blur(6px)", WebkitBackdropFilter: "blur(6px)",
-      display: "flex", alignItems: "flex-end", justifyContent: "center",
+      display: "flex", alignItems: "center", justifyContent: "center",
       animation: "fadeIn 0.2s ease",
       padding: 16,
     }}>
