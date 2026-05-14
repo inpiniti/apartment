@@ -33,7 +33,7 @@ function PinLock({ onUnlock }) {
           onUnlock();
         }, 300);
       } else {
-        // 틀릸 경우: 흔들림 후 재입력
+        // 틀릴 경우: 흔들림 후 재입력
         setShake(true);
         setTimeout(() => {
           setShake(false);
@@ -169,6 +169,23 @@ const Icon = {
       <circle cx="9" cy="9" r="3.5" stroke={c} strokeWidth="1.6"/>
       <path d="M3 19c0-3.3 2.7-6 6-6s6 2.7 6 6" stroke={c} strokeWidth="1.6" strokeLinecap="round"/>
       <path d="M16 5a3 3 0 1 1 0 6M21 19c0-3-2-5.5-5-6" stroke={c} strokeWidth="1.6" strokeLinecap="round"/>
+    </svg>
+  ),
+  check: (s = 12, c = "currentColor") => (
+    <svg width={s} height={s} viewBox="0 0 24 24" fill="none">
+      <path d="M5 12.5l4.5 4.5L19 7" stroke={c} strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round"/>
+    </svg>
+  ),
+  receipt: (s = 12, c = "currentColor") => (
+    <svg width={s} height={s} viewBox="0 0 24 24" fill="none">
+      <path d="M5 3v18l2.5-1.5L10 21l2.5-1.5L15 21l2.5-1.5L19 21V3z" stroke={c} strokeWidth="1.6" strokeLinejoin="round"/>
+      <path d="M9 8h6M9 12h6M9 16h3" stroke={c} strokeWidth="1.6" strokeLinecap="round"/>
+    </svg>
+  ),
+  copy: (s = 13, c = "currentColor") => (
+    <svg width={s} height={s} viewBox="0 0 24 24" fill="none">
+      <rect x="8" y="8" width="12" height="12" rx="2" stroke={c} strokeWidth="1.7"/>
+      <path d="M16 8V5a1 1 0 0 0-1-1H5a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h3" stroke={c} strokeWidth="1.7" strokeLinecap="round"/>
     </svg>
   ),
 };
@@ -447,6 +464,378 @@ function TopicDetail({ topic, day, onClose }) {
   );
 }
 
+// ─────────────────────────────────────────────
+// 회비 운영 화면
+// ─────────────────────────────────────────────
+const won = (n) => n.toLocaleString() + "원";
+
+function TransactionRow({ tx, catStyle }) {
+  const isIncome = tx.type === "income";
+  return (
+    <div style={{
+      display: "grid",
+      gridTemplateColumns: "auto 1fr auto",
+      gap: 14, alignItems: "flex-start",
+      padding: "14px 0",
+      borderBottom: "0.5px solid rgba(0,0,0,0.06)",
+    }}>
+      <div style={{
+        width: 38, height: 38, borderRadius: 12, flexShrink: 0,
+        background: catStyle.bg, color: catStyle.fg,
+        display: "flex", alignItems: "center", justifyContent: "center",
+        fontSize: 11, fontWeight: 800, letterSpacing: 0.3,
+      }}>{tx.category}</div>
+      <div style={{ minWidth: 0 }}>
+        <div style={{
+          fontSize: 14.5, fontWeight: 700, color: "#1a1a1a",
+          lineHeight: 1.35, letterSpacing: -0.2,
+          textWrap: "pretty",
+        }}>{tx.title}</div>
+        <div style={{ fontSize: 12.5, color: "#7a766f", marginTop: 2, lineHeight: 1.45, textWrap: "pretty" }}>
+          {tx.detail}
+        </div>
+        <div style={{
+          display: "flex", flexWrap: "wrap", gap: 10, marginTop: 6,
+          fontSize: 11.5, color: "#a8a39a",
+          alignItems: "center",
+        }}>
+          <span style={{ fontFeatureSettings: '"tnum"' }}>{tx.date.replaceAll("-", ".")}</span>
+          <span>· {tx.handler}</span>
+          {tx.vendor && <span>· {tx.vendor}</span>}
+          {tx.receipt && (
+            <span style={{
+              display: "inline-flex", alignItems: "center", gap: 3,
+              color: "oklch(0.5 0.1 145)",
+              fontWeight: 600,
+            }}>{Icon.receipt(11, "oklch(0.5 0.1 145)")} 영수증</span>
+          )}
+        </div>
+      </div>
+      <div style={{
+        fontSize: 15, fontWeight: 800,
+        color: isIncome ? "oklch(0.5 0.13 145)" : "#1a1a1a",
+        fontFeatureSettings: '"tnum"',
+        whiteSpace: "nowrap",
+        letterSpacing: -0.3,
+      }}>
+        {isIncome ? "+" : "−"}{tx.amount.toLocaleString()}
+      </div>
+    </div>
+  );
+}
+
+function DongPaymentBoard({ dongs }) {
+  const [expandedDong, setExpandedDong] = useState(null);
+  const [showUnpaidOnly, setShowUnpaidOnly] = useState(false);
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+        <div style={{ fontSize: 12, color: "#8a857d", flex: 1 }}>
+          동을 누르면 호수별 납부 현황을 볼 수 있습니다
+        </div>
+        <button
+          onClick={() => setShowUnpaidOnly(v => !v)}
+          style={{
+            border: "none", cursor: "pointer",
+            background: showUnpaidOnly ? "oklch(0.32 0.06 35)" : "#fff",
+            color: showUnpaidOnly ? "#fff" : "#5a5754",
+            fontSize: 12, fontWeight: 600,
+            padding: "6px 12px", borderRadius: 999,
+            boxShadow: showUnpaidOnly ? "none" : "0 0 0 0.5px rgba(0,0,0,0.08)",
+          }}
+        >미납만 보기</button>
+      </div>
+
+      {dongs.map(d => {
+        const rate = d.paidCount / d.total;
+        const isOpen = expandedDong === d.dong;
+        return (
+          <div key={d.dong} style={{
+            background: "#fff",
+            borderRadius: 16,
+            boxShadow: "0 1px 0 rgba(0,0,0,0.04), 0 1px 2px rgba(0,0,0,0.03), 0 0 0 0.5px rgba(0,0,0,0.04)",
+            overflow: "hidden",
+          }}>
+            <button
+              onClick={() => setExpandedDong(isOpen ? null : d.dong)}
+              style={{
+                width: "100%", border: "none", background: "transparent", cursor: "pointer",
+                padding: "14px 18px", textAlign: "left",
+                display: "flex", alignItems: "center", gap: 14,
+                font: "inherit",
+              }}
+            >
+              <div style={{ fontSize: 15, fontWeight: 800, color: "#1a1a1a", letterSpacing: -0.3, minWidth: 64 }}>
+                {d.dong}
+              </div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{
+                  height: 6, borderRadius: 999,
+                  background: "#f0ede5",
+                  overflow: "hidden",
+                }}>
+                  <div style={{
+                    width: (rate * 100) + "%", height: "100%",
+                    background: rate >= 0.9 ? "oklch(0.6 0.13 145)" : "oklch(0.65 0.12 80)",
+                    transition: "width 0.4s ease",
+                  }}/>
+                </div>
+                <div style={{ fontSize: 11, color: "#a8a39a", marginTop: 4, fontFeatureSettings: '"tnum"' }}>
+                  {d.paidCount} / {d.total}세대 · {(rate * 100).toFixed(1)}%
+                </div>
+              </div>
+              <div style={{
+                width: 26, height: 26, display: "flex", alignItems: "center", justifyContent: "center",
+                color: "#a8a39a",
+                transform: isOpen ? "rotate(90deg)" : "none",
+                transition: "transform 0.2s ease",
+              }}>{Icon.chev(16, "currentColor", "right")}</div>
+            </button>
+
+            {isOpen && (
+              <div style={{
+                padding: "6px 18px 18px",
+                borderTop: "0.5px solid rgba(0,0,0,0.06)",
+              }}>
+                <div style={{
+                  display: "grid",
+                  gridTemplateColumns: "repeat(auto-fill, minmax(80px, 1fr))",
+                  gap: 6,
+                  marginTop: 10,
+                }}>
+                  {d.households
+                    .filter(h => !showUnpaidOnly || !h.paid)
+                    .map(h => (
+                      <div key={h.ho} style={{
+                        background: h.paid ? "oklch(0.97 0.025 145)" : "#faf5f1",
+                        color: h.paid ? "oklch(0.4 0.12 145)" : "oklch(0.5 0.1 35)",
+                        border: h.paid ? "0.5px solid oklch(0.88 0.04 145)" : "0.5px solid oklch(0.88 0.04 35)",
+                        borderRadius: 8,
+                        padding: "7px 4px",
+                        textAlign: "center",
+                        fontSize: 12, fontWeight: 600,
+                        fontFeatureSettings: '"tnum"',
+                        display: "flex", alignItems: "center", justifyContent: "center", gap: 4,
+                      }}>
+                        {h.paid && Icon.check(10, "oklch(0.5 0.13 145)")}
+                        {h.ho}
+                      </div>
+                    ))}
+                </div>
+                {showUnpaidOnly && d.households.every(h => h.paid) && (
+                  <div style={{ fontSize: 13, color: "#a8a39a", textAlign: "center", padding: "14px 0" }}>
+                    🎉 {d.dong} 미납 없음
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function DuesView() {
+  const meta = window.DUES_META || {};
+  const summary = window.DUES_SUMMARY || {};
+  const txs = window.DUES_TRANSACTIONS || [];
+  const dongs = window.DUES_PAYMENT_STATUS || [];
+  const catStyles = window.DUES_CATEGORY_STYLES || {};
+
+  const [tab, setTab] = useState('expense');
+  const [copyOk, setCopyOk] = useState(false);
+
+  const filtered = useMemo(() => {
+    if (tab === 'expense') return txs.filter(t => t.type === 'expense');
+    if (tab === 'income') return txs.filter(t => t.type === 'income');
+    return [];
+  }, [tab, txs]);
+
+  const copyAccount = () => {
+    if (!navigator.clipboard) return;
+    navigator.clipboard.writeText(meta.account || '').then(() => {
+      setCopyOk(true);
+      setTimeout(() => setCopyOk(false), 1500);
+    });
+  };
+
+  return (
+    <div style={{
+      animation: "fadeSlide 0.3s cubic-bezier(0.32, 0.72, 0, 1)",
+      paddingTop: 24,
+    }}>
+      <div style={{ marginBottom: 8 }}>
+        <div style={{ fontSize: 12, fontWeight: 700, letterSpacing: 1.5, color: "oklch(0.5 0.13 145)", whiteSpace: "nowrap" }}>
+          입예협 회비 · 투명 운영
+        </div>
+      </div>
+      <h1 style={{
+        fontSize: "clamp(24px, 4vw, 34px)", fontWeight: 800, color: "#1a1a1a",
+        letterSpacing: -0.7, lineHeight: 1.25, margin: "0 0 6px",
+        textWrap: "balance",
+      }}>
+        회비 운영 현황
+      </h1>
+      <div style={{ fontSize: 13.5, color: "#8a857d" }}>
+        {meta.lastUpdated?.replaceAll("-", ".")} 기준 · 세대당 월 {won(meta.monthlyFee || 0)}
+      </div>
+
+      {/* 잔액 큰 카드 */}
+      <div style={{
+        marginTop: 22,
+        background: "linear-gradient(135deg, oklch(0.32 0.06 35) 0%, oklch(0.22 0.04 30) 100%)",
+        borderRadius: 22,
+        padding: "22px 24px",
+        color: "#fff",
+        boxShadow: "0 8px 24px rgba(0,0,0,0.08)",
+      }}>
+        <div style={{ fontSize: 11.5, fontWeight: 700, letterSpacing: 0.6, opacity: 0.7 }}>
+          현재 잔액
+        </div>
+        <div style={{
+          fontSize: 34, fontWeight: 800, letterSpacing: -1,
+          marginTop: 6,
+          fontFeatureSettings: '"tnum"',
+        }}>
+          {(summary.balance || 0).toLocaleString()}<span style={{ fontSize: 18, fontWeight: 700, marginLeft: 3, opacity: 0.85 }}>원</span>
+        </div>
+        <div style={{
+          display: "flex", gap: 18, marginTop: 16, flexWrap: "wrap",
+          fontSize: 12.5,
+        }}>
+          <div>
+            <div style={{ opacity: 0.65, fontSize: 11, letterSpacing: 0.3 }}>총 수입</div>
+            <div style={{ fontWeight: 700, marginTop: 2, fontFeatureSettings: '"tnum"' }}>
+              +{(summary.income || 0).toLocaleString()}원
+            </div>
+          </div>
+          <div style={{ width: 0.5, background: "rgba(255,255,255,0.18)" }}/>
+          <div>
+            <div style={{ opacity: 0.65, fontSize: 11, letterSpacing: 0.3 }}>총 지출</div>
+            <div style={{ fontWeight: 700, marginTop: 2, fontFeatureSettings: '"tnum"' }}>
+              −{(summary.expense || 0).toLocaleString()}원
+            </div>
+          </div>
+          <div style={{ width: 0.5, background: "rgba(255,255,255,0.18)" }}/>
+          <div>
+            <div style={{ opacity: 0.65, fontSize: 11, letterSpacing: 0.3 }}>납부율</div>
+            <div style={{ fontWeight: 700, marginTop: 2, fontFeatureSettings: '"tnum"' }}>
+              {((summary.paidRate || 0) * 100).toFixed(1)}% ({summary.paidCount}/{summary.totalCount})
+            </div>
+          </div>
+        </div>
+        <button
+          onClick={copyAccount}
+          style={{
+            marginTop: 18, border: "none", cursor: "pointer",
+            background: "rgba(255,255,255,0.10)",
+            color: "#fff",
+            padding: "10px 14px",
+            borderRadius: 12,
+            display: "flex", alignItems: "center", gap: 10,
+            width: "100%",
+            fontSize: 12.5,
+            backdropFilter: "blur(8px)",
+          }}
+        >
+          <span style={{ opacity: 0.7, fontWeight: 600 }}>입금 계좌</span>
+          <span style={{ fontWeight: 700, letterSpacing: 0.2, fontFeatureSettings: '"tnum"', flex: 1, textAlign: "left", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+            {meta.account}
+          </span>
+          <span style={{ opacity: 0.85, display: "inline-flex", alignItems: "center", gap: 4, flexShrink: 0 }}>
+            {Icon.copy(13, "#fff")}
+            {copyOk ? "복사됨" : "복사"}
+          </span>
+        </button>
+      </div>
+
+      {/* 서브 탭 */}
+      <div style={{
+        marginTop: 28,
+        display: "flex",
+        gap: 4,
+        background: "#f0ede5",
+        padding: 4,
+        borderRadius: 14,
+      }}>
+        {[
+          { id: 'expense', label: '사용내역', count: txs.filter(t => t.type === 'expense').length },
+          { id: 'income', label: '입금내역', count: txs.filter(t => t.type === 'income').length },
+          { id: 'dong', label: '동호수별 납부', count: null },
+        ].map(t => (
+          <button key={t.id}
+            onClick={() => setTab(t.id)}
+            style={{
+              flex: 1, border: "none", cursor: "pointer",
+              background: tab === t.id ? "#fff" : "transparent",
+              color: tab === t.id ? "#1a1a1a" : "#8a857d",
+              padding: "9px 8px", borderRadius: 10,
+              fontSize: 13, fontWeight: 700,
+              boxShadow: tab === t.id ? "0 1px 2px rgba(0,0,0,0.06)" : "none",
+              transition: "all 0.2s ease",
+              display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
+            }}
+          >
+            {t.label}
+            {t.count !== null && (
+              <span style={{
+                fontSize: 11, fontWeight: 600,
+                color: tab === t.id ? "#a8a39a" : "#b8b3aa",
+                fontFeatureSettings: '"tnum"',
+              }}>{t.count}</span>
+            )}
+          </button>
+        ))}
+      </div>
+
+      {/* 컨텐츠 */}
+      <div style={{ marginTop: 18, paddingBottom: 40 }}>
+        {tab === 'dong' ? (
+          <DongPaymentBoard dongs={dongs} />
+        ) : (
+          <div style={{
+            background: "#fff",
+            borderRadius: 18,
+            padding: "4px 20px",
+            boxShadow: "0 1px 0 rgba(0,0,0,0.04), 0 1px 2px rgba(0,0,0,0.03), 0 0 0 0.5px rgba(0,0,0,0.04)",
+          }}>
+            {filtered.length === 0 ? (
+              <div style={{ padding: "40px 0", textAlign: "center", color: "#a8a39a", fontSize: 13 }}>
+                내역이 없습니다
+              </div>
+            ) : (
+              filtered.map(tx => (
+                <TransactionRow key={tx.id} tx={tx}
+                  catStyle={catStyles[tx.category] || { fg: "#666", bg: "#eee" }} />
+              ))
+            )}
+          </div>
+        )}
+
+        <div style={{
+          marginTop: 22,
+          padding: "14px 16px",
+          background: "oklch(0.97 0.015 35)",
+          border: "0.5px solid oklch(0.9 0.02 35)",
+          borderRadius: 14,
+          fontSize: 12.5,
+          color: "#5a5754",
+          lineHeight: 1.6,
+          textWrap: "pretty",
+        }}>
+          <div style={{ fontWeight: 700, color: "#1a1a1a", marginBottom: 4 }}>
+            💡 회비 운영 원칙
+          </div>
+          모든 사용내역과 동호수별 납부 현황을 공개합니다. 영수증은 운영진 공용 드라이브에서 확인 가능하며, 궁금한 항목은 라운지에 댓글로 남겨주세요.<br/>
+          담당: {meta.manager}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function App() {
   // 세션 단위 인증 체크
   const [authed, setAuthed] = useState(() => sessionStorage.getItem("auth") === "1");
@@ -464,7 +853,7 @@ function AuthedApp() {
   const otherMeta = window.OTHER_META || {};
   const [idx, setIdx] = useState(0);
   const [openTopic, setOpenTopic] = useState(null);
-  const [mode, setMode] = useState('topic'); // 'topic' | 'other'
+  const [mode, setMode] = useState('topic'); // 'topic' | 'other' | 'dues'
   // 모바일 스크롤 감지 — 헤더 콘텐츠 전환용 (opacity/transform만 바꿈, position 변경 없음)
   const [scrolled, setScrolled] = useState(false);
   // DateRail 표시/숨김 — 스크롤 방향 감지
@@ -501,8 +890,8 @@ function AuthedApp() {
 
       lastScrollYRef.current = currentY;
     };
-    // 기타 모드에서는 scrolled를 false로 유지
-    if (mode === 'other') {
+    // 기타·회비 모드에서는 scrolled를 false로 유지
+    if (mode !== 'topic') {
       setScrolled(false);
     }
     window.addEventListener("scroll", onScroll, { passive: true });
@@ -644,6 +1033,18 @@ function AuthedApp() {
               >
                 기타
               </button>
+              <button
+                onClick={() => setMode('dues')}
+                style={{
+                  padding: "6px 12px", borderRadius: 10, border: "none",
+                  background: mode === 'dues' ? "oklch(0.32 0.06 35)" : "transparent",
+                  color: mode === 'dues' ? "#fff" : "#a8a39a",
+                  fontSize: 13, fontWeight: 600, cursor: "pointer",
+                  transition: "all 0.2s ease",
+                }}
+              >
+                회비
+              </button>
             </div>
 
             {/* 날짜 컨트롤 — 토픽 모드에서만 표시 (데스크탑) */}
@@ -722,6 +1123,8 @@ function AuthedApp() {
               ))}
             </div>
           </div>
+        ) : mode === 'dues' ? (
+          <DuesView />
         ) : (
           // 기타 모드 — 순수 토픽 나열 (날짜 없음)
           <div style={{
@@ -766,5 +1169,3 @@ function AuthedApp() {
 }
 
 export default App;
-
-
