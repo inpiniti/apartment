@@ -485,8 +485,10 @@ function AuthedApp() {
       const currentY = window.scrollY;
       const delta = currentY - lastScrollYRef.current;
 
-      // 헤더 타이틀 전환 (opacity/transform만)
-      setScrolled(currentY > 60);
+      // 헤더 타이틀 전환 (토픽 모드에서만)
+      if (mode === 'topic') {
+        setScrolled(currentY > 60);
+      }
 
       // DateRail 방향별 표시/숨김
       // 상단 100px 이내에서는 항상 표시
@@ -499,9 +501,13 @@ function AuthedApp() {
 
       lastScrollYRef.current = currentY;
     };
+    // 기타 모드에서는 scrolled를 false로 유지
+    if (mode === 'other') {
+      setScrolled(false);
+    }
     window.addEventListener("scroll", onScroll, { passive: true });
     return () => window.removeEventListener("scroll", onScroll);
-  }, []);
+  }, [mode]);
 
   useEffect(() => {
     // IntersectionObserver로 sentinel이 뷰포트 위로 사라지면 railPast=true
