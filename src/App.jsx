@@ -342,7 +342,7 @@ function TopicDetail({ topic, day, onClose }) {
         borderRadius: 24,
         width: "100%",
         maxWidth: 720,
-        maxHeight: "92vh",
+        maxHeight: "calc(100vh - 32px - env(safe-area-inset-bottom))",
         overflow: "hidden",
         display: "flex", flexDirection: "column",
         boxShadow: "0 20px 60px rgba(0,0,0,0.18)",
