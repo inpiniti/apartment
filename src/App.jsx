@@ -351,9 +351,11 @@ function TopicDetail({ topic, day, onClose }) {
           display: "flex", alignItems: "center", padding: "14px 14px 14px 22px",
           borderBottom: "0.5px solid rgba(0,0,0,0.06)",
         }}>
-          <span style={{ fontSize: 12, color: "#8a857d", fontFeatureSettings: '"tnum"' }}>
-            {day.date.replaceAll("-", ".")} · {day.dow}
-          </span>
+          {day && (
+            <span style={{ fontSize: 12, color: "#8a857d", fontFeatureSettings: '"tnum"' }}>
+              {day.date.replaceAll("-", ".")} · {day.dow}
+            </span>
+          )}
           <div style={{ flex: 1 }}/>
           <button onClick={onClose} style={{
             width: 34, height: 34, borderRadius: 999, border: "none", cursor: "pointer",
@@ -458,8 +460,11 @@ function App() {
 
 function AuthedApp() {
   const days = window.BRIEFING_DATA || [];
+  const otherTopics = window.OTHER_DATA || [];
+  const otherMeta = window.OTHER_META || {};
   const [idx, setIdx] = useState(0);
   const [openTopic, setOpenTopic] = useState(null);
+  const [mode, setMode] = useState('topic'); // 'topic' | 'other'
   // 모바일 스크롤 감지 — 헤더 콘텐츠 전환용 (opacity/transform만 바꿈, position 변경 없음)
   const [scrolled, setScrolled] = useState(false);
   // DateRail 표시/숨김 — 스크롤 방향 감지
@@ -598,75 +603,153 @@ function AuthedApp() {
             </div>
           </div>
 
-          {/* 날짜 컨트롤 — 데스크탑만 */}
-          <div className="header-date-control">
-            <DateControl days={days} idx={idx} setIdx={setIdx} />
+          {/* 토글 버튼 + 날짜 컨트롤 */}
+          <div style={{ display: "flex", alignItems: "center", gap: 10, flexShrink: 0 }}>
+            {/* 토글 버튼 */}
+            <div style={{
+              display: "flex", alignItems: "center",
+              background: "#fff",
+              borderRadius: 14,
+              padding: "4px 4px",
+              boxShadow: "0 1px 2px rgba(0,0,0,0.04), 0 0 0 0.5px rgba(0,0,0,0.06)",
+              gap: 0,
+            }}>
+              <button
+                onClick={() => setMode('topic')}
+                style={{
+                  padding: "6px 12px", borderRadius: 10, border: "none",
+                  background: mode === 'topic' ? "oklch(0.32 0.06 35)" : "transparent",
+                  color: mode === 'topic' ? "#fff" : "#a8a39a",
+                  fontSize: 13, fontWeight: 600, cursor: "pointer",
+                  transition: "all 0.2s ease",
+                }}
+              >
+                토픽
+              </button>
+              <button
+                onClick={() => setMode('other')}
+                style={{
+                  padding: "6px 12px", borderRadius: 10, border: "none",
+                  background: mode === 'other' ? "oklch(0.32 0.06 35)" : "transparent",
+                  color: mode === 'other' ? "#fff" : "#a8a39a",
+                  fontSize: 13, fontWeight: 600, cursor: "pointer",
+                  transition: "all 0.2s ease",
+                }}
+              >
+                기타
+              </button>
+            </div>
+
+            {/* 날짜 컨트롤 — 토픽 모드에서만 표시 (데스크탑) */}
+            {mode === 'topic' && (
+              <div className="header-date-control">
+                <DateControl days={days} idx={idx} setIdx={setIdx} />
+              </div>
+            )}
           </div>
         </div>
       </header>
 
-      {/* ── 모바일 전용 DateRail sticky 바 ──
+      {/* ── 모바일 전용 DateRail sticky 바 (토픽 모드에서만) ──
            position은 CSS에서 항상 sticky로 고정.
            JS는 border/bg 같은 시각 스타일만 바꿈 → 레이아웃 리플로우 없음 */}
-      <div
-        className="mobile-rail-bar"
-        style={{
-          /* 배경은 항상 불투명 — 스크롤 시 콘텐츠가 비쳐 보이지 않도록 */
-          background: "#faf9f6",
-          /* 구분선은 sticky 고정된 이후에만 표시 */
-          borderBottom: railPast ? "0.5px solid rgba(0,0,0,0.10)" : "0.5px solid transparent",
-          /* 스크롤 방향에 따라 슬라이드 인/아웃 */
-          transform: railVisible ? "translateY(0)" : "translateY(-100%)",
-          transition: "transform 0.28s cubic-bezier(0.32, 0.72, 0, 1), border-color 0.2s",
-          padding: "4px 20px 6px",
-        }}
-      >
-        {/* IntersectionObserver 감지 sentinel — 높이 0, 레이아웃 영향 없음 */}
-        <div ref={sentinelRef} style={{ height: 0 }} />
-        <DateRail days={days} idx={idx} setIdx={setIdx} />
-      </div>
+      {mode === 'topic' && (
+        <div
+          className="mobile-rail-bar"
+          style={{
+            /* 배경은 항상 불투명 — 스크롤 시 콘텐츠가 비쳐 보이지 않도록 */
+            background: "#faf9f6",
+            /* 구분선은 sticky 고정된 이후에만 표시 */
+            borderBottom: railPast ? "0.5px solid rgba(0,0,0,0.10)" : "0.5px solid transparent",
+            /* 스크롤 방향에 따라 슬라이드 인/아웃 */
+            transform: railVisible ? "translateY(0)" : "translateY(-100%)",
+            transition: "transform 0.28s cubic-bezier(0.32, 0.72, 0, 1), border-color 0.2s",
+            padding: "4px 20px 6px",
+          }}
+        >
+          {/* IntersectionObserver 감지 sentinel — 높이 0, 레이아웃 영향 없음 */}
+          <div ref={sentinelRef} style={{ height: 0 }} />
+          <DateRail days={days} idx={idx} setIdx={setIdx} />
+        </div>
+      )}
 
       <main className="container" style={{ maxWidth: 880, margin: "0 auto", padding: "0 20px calc(60px + env(safe-area-inset-bottom))" }}>
-        <div key={day.date} style={{
-          animation: "fadeSlide 0.3s cubic-bezier(0.32, 0.72, 0, 1)",
-          paddingTop: 24,
-        }}>
-          <div style={{ display: "flex", alignItems: "baseline", gap: 12, flexWrap: "wrap", marginBottom: 8 }}>
-            <div style={{ fontSize: 12, fontWeight: 700, letterSpacing: 1.5, color: moodColor, whiteSpace: "nowrap" }}>
-              {day.label} · {day.mood}
-            </div>
-            <div style={{ flex: 1 }} />
-            <div style={{ fontSize: 12, color: "#8a857d", whiteSpace: "nowrap" }}>
-              토픽 {day.topics.length}개 · 댓글 {totalReplies}
-            </div>
-          </div>
-          <h1 style={{
-            fontSize: "clamp(24px, 4vw, 34px)", fontWeight: 800, color: "#1a1a1a",
-            letterSpacing: -0.7, lineHeight: 1.25, margin: "0 0 6px",
-            textWrap: "balance",
+        {mode === 'topic' ? (
+          // 토픽 모드 — 기존 일일 브리핑
+          <div key={day?.date} style={{
+            animation: "fadeSlide 0.3s cubic-bezier(0.32, 0.72, 0, 1)",
+            paddingTop: 24,
           }}>
-            {day.headline}
-          </h1>
-          <div style={{ fontSize: 13.5, color: "#8a857d" }}>
-            {day.date.replaceAll("-", ".")} {day.dow}요일
-          </div>
+            <div style={{ display: "flex", alignItems: "baseline", gap: 12, flexWrap: "wrap", marginBottom: 8 }}>
+              <div style={{ fontSize: 12, fontWeight: 700, letterSpacing: 1.5, color: moodColor, whiteSpace: "nowrap" }}>
+                {day?.label} · {day?.mood}
+              </div>
+              <div style={{ flex: 1 }} />
+              <div style={{ fontSize: 12, color: "#8a857d", whiteSpace: "nowrap" }}>
+                토픽 {day?.topics.length}개 · 댓글 {totalReplies}
+              </div>
+            </div>
+            <h1 style={{
+              fontSize: "clamp(24px, 4vw, 34px)", fontWeight: 800, color: "#1a1a1a",
+              letterSpacing: -0.7, lineHeight: 1.25, margin: "0 0 6px",
+              textWrap: "balance",
+            }}>
+              {day?.headline}
+            </h1>
+            <div style={{ fontSize: 13.5, color: "#8a857d" }}>
+              {day?.date.replaceAll("-", ".")} {day?.dow}요일
+            </div>
 
-          {/* 데스크탑 전용 DateRail */}
-          <div className="desktop-rail">
-            <DateRail days={days} idx={idx} setIdx={setIdx} />
-          </div>
+            {/* 데스크탑 전용 DateRail */}
+            <div className="desktop-rail">
+              <DateRail days={days} idx={idx} setIdx={setIdx} />
+            </div>
 
-          <div className="topic-grid" style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))",
-            gap: 12,
-            marginTop: 28,
+            <div className="topic-grid" style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))",
+              gap: 12,
+              marginTop: 28,
+            }}>
+              {day?.topics.map(t => (
+                <TopicCard key={t.id} topic={t} onOpen={() => setOpenTopic(t)} />
+              ))}
+            </div>
+          </div>
+        ) : (
+          // 기타 모드 — 순수 토픽 나열 (날짜 없음)
+          <div style={{
+            animation: "fadeSlide 0.3s cubic-bezier(0.32, 0.72, 0, 1)",
+            paddingTop: 24,
           }}>
-            {day.topics.map(t => (
-              <TopicCard key={t.id} topic={t} onOpen={() => setOpenTopic(t)} />
-            ))}
+            <div style={{ marginBottom: 8 }}>
+              <div style={{ fontSize: 12, fontWeight: 700, letterSpacing: 1.5, color: "#8a857d", whiteSpace: "nowrap" }}>
+                외부 정보 · 지역 호재
+              </div>
+            </div>
+            <h1 style={{
+              fontSize: "clamp(24px, 4vw, 34px)", fontWeight: 800, color: "#1a1a1a",
+              letterSpacing: -0.7, lineHeight: 1.25, margin: "0 0 6px",
+              textWrap: "balance",
+            }}>
+              {otherMeta.title || "검단 지역 호재"}
+            </h1>
+            <div style={{ fontSize: 13.5, color: "#8a857d" }}>
+              {otherMeta.subtitle || "뉴스·공공기관 자료 기반 정보"}
+            </div>
+
+            <div className="topic-grid" style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))",
+              gap: 12,
+              marginTop: 28,
+            }}>
+              {otherTopics.map(t => (
+                <TopicCard key={t.id} topic={t} onOpen={() => setOpenTopic(t)} />
+              ))}
+            </div>
           </div>
-        </div>
+        )}
       </main>
 
       {openTopic && (
