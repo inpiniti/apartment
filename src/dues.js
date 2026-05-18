@@ -6,7 +6,7 @@ window.DUES_META = {
   totalHouseholds: 569,
   startedAt: '2026-05-01',
   lastUpdated: '2026-05-14',
-  account: '국민 123-4567-89012 (예금주: 검단파라곤 입예협)',
+  account: '국민 123-4567-89000 (예금주: 검단파라곤 입예협)',
   manager: '5901동 1701호 김두W',
 };
 
@@ -297,7 +297,8 @@ function generateDongData(dong, floors, units, total, seedBase) {
         paid,
         // 납부일 (paid인 경우만)
         paidAt: paid
-          ? '2026-05-' + String(3 + Math.floor(seededRandom(seed + 1) * 10)).padStart(2, '0')
+          ? '2026-05-' +
+            String(3 + Math.floor(seededRandom(seed + 1) * 10)).padStart(2, '0')
           : null,
       });
       count++;
@@ -308,8 +309,14 @@ function generateDongData(dong, floors, units, total, seedBase) {
 }
 
 window.DUES_PAYMENT_STATUS = DONG_LAYOUT.map((d, i) => {
-  const households = generateDongData(d.dong, d.floors, d.units, d.total, (i + 1) * 137);
-  const paidCount = households.filter(h => h.paid).length;
+  const households = generateDongData(
+    d.dong,
+    d.floors,
+    d.units,
+    d.total,
+    (i + 1) * 137,
+  );
+  const paidCount = households.filter((h) => h.paid).length;
   return {
     dong: d.dong,
     total: d.total,
@@ -319,10 +326,20 @@ window.DUES_PAYMENT_STATUS = DONG_LAYOUT.map((d, i) => {
 });
 
 // 총 집계 (전체 헤더에 표시)
-const _totalPaid = window.DUES_PAYMENT_STATUS.reduce((s, d) => s + d.paidCount, 0);
-const _totalHouseholds = window.DUES_PAYMENT_STATUS.reduce((s, d) => s + d.total, 0);
-const _income = window.DUES_TRANSACTIONS.filter(t => t.type === 'income').reduce((s, t) => s + t.amount, 0);
-const _expense = window.DUES_TRANSACTIONS.filter(t => t.type === 'expense').reduce((s, t) => s + t.amount, 0);
+const _totalPaid = window.DUES_PAYMENT_STATUS.reduce(
+  (s, d) => s + d.paidCount,
+  0,
+);
+const _totalHouseholds = window.DUES_PAYMENT_STATUS.reduce(
+  (s, d) => s + d.total,
+  0,
+);
+const _income = window.DUES_TRANSACTIONS.filter(
+  (t) => t.type === 'income',
+).reduce((s, t) => s + t.amount, 0);
+const _expense = window.DUES_TRANSACTIONS.filter(
+  (t) => t.type === 'expense',
+).reduce((s, t) => s + t.amount, 0);
 
 window.DUES_SUMMARY = {
   income: _income,
